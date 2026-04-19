@@ -1,0 +1,37 @@
+{
+  "name": "google-maps-scrapping",
+  "displayName": "Google Maps Scraper",
+  "version": "1.0.0",
+  "description": "Chrome Extension for Scraping Google Maps Data",
+  "main": "index.js",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "plasmo": "^0.90.5",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.40",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  },
+  "manifest": {
+    "name": "Google Maps Scraper",
+    "description": "Chrome Extension for Scraping Google Maps Data",
+    "permissions": [
+      "storage",
+      "tabs",
+      "activeTab"
+    ],
+    "host_permissions": [
+      "https://*.google.com/maps/*"
+    ]
+  }
+}

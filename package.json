@@ -39,7 +39,8 @@
     "permissions": [
       "storage",
       "tabs",
-      "activeTab"
+      "activeTab",
+      "scripting"
     ],
     "host_permissions": [
       "https://*.google.com/maps/*"

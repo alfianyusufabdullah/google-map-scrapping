@@ -8,8 +8,28 @@ import { Switch } from "~/components/ui/switch"
 import { Search, MapPin, Database } from "lucide-react"
 
 function IndexSidePanel() {
-  const [keyword, setKeyword] = useState("")
+  const [context, setContext] = useState("")
+  const [location, setLocation] = useState("")
   const [isAutoScroll, setIsAutoScroll] = useState(true)
+
+  const handleStartScraping = () => {
+    if (!context.trim() || !location.trim()) {
+      alert("Harap isi Context dan Location!")
+      return
+    }
+
+    chrome.runtime.sendMessage(
+      {
+        action: "START_SCRAPING",
+        payload: { context, location }
+      },
+      (response) => {
+        if (!response?.success) {
+          alert(response?.error || "Terjadi kesalahan saat memulai scraping.")
+        }
+      }
+    )
+  }
 
   return (
     <div className="p-4 min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
@@ -27,15 +47,29 @@ function IndexSidePanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="keyword">Search Keyword</Label>
+            <Label htmlFor="context">Business Context</Label>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                id="keyword"
+                id="context"
                 className="pl-9"
-                placeholder="e.g., Coffee Shops in Bali"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="e.g., Coffee Shops"
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <div className="relative">
+              <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="location"
+                className="pl-9"
+                placeholder="e.g., Bali"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
               />
             </div>
           </div>
@@ -53,7 +87,7 @@ function IndexSidePanel() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
-          <Button className="w-full" size="lg">
+          <Button className="w-full" size="lg" onClick={handleStartScraping}>
             Start Scraping
           </Button>
           <Button 

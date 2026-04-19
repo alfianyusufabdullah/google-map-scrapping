@@ -403,7 +403,7 @@ function OptionsIndex() {
       </Sidebar>
 
       {/* ===== MAIN CONTENT ===== */}
-      <SidebarInset>
+      <SidebarInset className="h-screen overflow-hidden">
         {/* Header */}
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
@@ -429,8 +429,8 @@ function OptionsIndex() {
         </header>
 
         {/* Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 md:p-8 pt-0 mt-6 space-y-6">
+        <ScrollArea className="h-[calc(100vh-4rem)] w-full">
+          <div className="p-4 md:p-8 space-y-6">
             {selectedSession ? (
               <>
                 {/* Stat Cards */}

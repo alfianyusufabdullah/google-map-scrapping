@@ -64,9 +64,10 @@ function IndexSidePanel() {
       return
     }
 
+    setCurrentSessionCount(0)
     // Set loading state immediately in UI
     setIsScraping(true)
-    chrome.storage.local.set({ isScraping: true })
+    chrome.storage.local.set({ isScraping: true, currentSessionCount: 0 })
 
     chrome.runtime.sendMessage(
       {
@@ -86,8 +87,8 @@ function IndexSidePanel() {
 
   const handleStopScraping = () => {
     setIsScraping(false)
+    // The scraper loop in content script now checks this storage value dynamically
     chrome.storage.local.set({ isScraping: false })
-    // Optional: Send a stop message to content script if needed
   }
 
   return (
@@ -104,65 +105,98 @@ function IndexSidePanel() {
             Set parameters before starting the extraction process.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="context">Business Context</Label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="context"
-                className="pl-9"
-                placeholder="e.g., Coffee Shops"
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                disabled={isScraping}
-              />
-            </div>
-          </div>
+        
+        {!isScraping ? (
+          <>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="context">Business Context</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="context"
+                    className="pl-9"
+                    placeholder="e.g., Coffee Shops"
+                    value={context}
+                    onChange={(e) => setContext(e.target.value)}
+                    disabled={isScraping}
+                  />
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <div className="relative">
-              <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="location"
-                className="pl-9"
-                placeholder="e.g., Bali"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={isScraping}
-              />
-            </div>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="location"
+                    className="pl-9"
+                    placeholder="e.g., Bali"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    disabled={isScraping}
+                  />
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="limit">Item Limit (Max 5000)</Label>
-            <div className="relative">
-              <Hash className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="limit"
-                type="number"
-                min={1}
-                max={5000}
-                className="pl-9"
-                value={limit}
-                onChange={(e) => setLimit(parseInt(e.target.value) || 0)}
-                disabled={isScraping}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="limit">Item Limit (Max 5000)</Label>
+                <div className="relative">
+                  <Hash className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="limit"
+                    type="number"
+                    min={1}
+                    max={5000}
+                    className="pl-9"
+                    value={limit}
+                    onChange={(e) => setLimit(parseInt(e.target.value) || 0)}
+                    disabled={isScraping}
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-3">
+              <Button 
+                className="w-full" 
+                size="lg" 
+                onClick={handleStartScraping}
+              >
+                Start Scraping
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("options.html") })}
+              >
+                <Database className="w-4 h-4" />
+                View Results Database
+              </Button>
+            </CardFooter>
+          </>
+        ) : (
+          <CardContent className="pt-6 pb-8 flex flex-col items-center text-center space-y-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center justify-center p-3 bg-blue-100 dark:bg-blue-900/40 rounded-full mb-2">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold">Scraping Active</h3>
+              <p className="text-sm text-muted-foreground">
+                Extracting "{context}" in "{location}"
+              </p>
             </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3">
-          {isScraping && (
-            <div className="w-full text-center py-2 bg-slate-100 dark:bg-slate-800 rounded-md">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                {currentSessionCount} / {currentSessionLimit} items found
-              </span>
+
+            <div className="w-full py-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="text-4xl font-black text-primary tracking-tighter">
+                {currentSessionCount}
+              </div>
+              <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                out of {currentSessionLimit} items found
+              </div>
             </div>
-          )}
-          {isScraping ? (
+
             <Button 
-              className="w-full gap-2" 
+              className="w-full gap-2 mt-4" 
               variant="destructive"
               size="lg" 
               onClick={handleStopScraping}
@@ -170,35 +204,9 @@ function IndexSidePanel() {
               <XCircle className="w-5 h-5" />
               STOP & RESET
             </Button>
-          ) : (
-            <Button 
-              className="w-full" 
-              size="lg" 
-              onClick={handleStartScraping}
-            >
-              Start Scraping
-            </Button>
-          )}
-          
-          <Button 
-            variant="outline" 
-            className="w-full gap-2"
-            onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("options.html") })}
-          >
-            <Database className="w-4 h-4" />
-            View Results Database
-          </Button>
-        </CardFooter>
+          </CardContent>
+        )}
       </Card>
-      
-      {isScraping && (
-        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center gap-3 border border-blue-100 dark:border-blue-900/30">
-          <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-          <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
-            Scraping sedang berjalan di tab Maps...
-          </p>
-        </div>
-      )}
     </div>
   )
 }

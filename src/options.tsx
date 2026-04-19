@@ -429,203 +429,206 @@ function OptionsIndex() {
         </header>
 
         {/* Content */}
-        <ScrollArea className="flex-1 p-4 md:p-8 pt-0 mt-6 space-y-6">
-          {selectedSession ? (
-            <>
-              {/* Stat Cards */}
-              <div className="grid gap-4 md:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Places</CardTitle>
-                    <Database className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{currentData.length}</div>
-                    <p className="text-xs text-muted-foreground">in this session</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Highly Rated</CardTitle>
-                    <Star className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{highlyRated}</div>
-                    <p className="text-xs text-muted-foreground">{">"} 4.5 stars rating</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">With Phone</CardTitle>
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{withPhone}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {currentData.length > 0
-                        ? `${Math.round((withPhone / currentData.length) * 100)}% of total`
-                        : "no data"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">With Website</CardTitle>
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{withWebsite}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {currentData.length > 0
-                        ? `${Math.round((withWebsite / currentData.length) * 100)}% of total`
-                        : "no data"}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Table Section */}
-              <div className="space-y-4">
-                {/* Toolbar */}
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Search business names, addresses, or locations..."
-                    className="h-11 border-slate-200 pl-10 shadow-none focus:ring-primary dark:border-slate-800"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                  />
-                  <Button variant="outline" size="sm" onClick={exportCSV}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export
-                  </Button>
+        <ScrollArea className="flex-1">
+          <div className="p-4 md:p-8 pt-0 mt-6 space-y-6">
+            {selectedSession ? (
+              <>
+                {/* Stat Cards */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Places</CardTitle>
+                      <Database className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{currentData.length}</div>
+                      <p className="text-xs text-muted-foreground">in this session</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Highly Rated</CardTitle>
+                      <Star className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{highlyRated}</div>
+                      <p className="text-xs text-muted-foreground">{">"} 4.5 stars rating</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">With Phone</CardTitle>
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{withPhone}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {currentData.length > 0
+                          ? `${Math.round((withPhone / currentData.length) * 100)}% of total`
+                          : "no data"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">With Website</CardTitle>
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{withWebsite}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {currentData.length > 0
+                          ? `${Math.round((withWebsite / currentData.length) * 100)}% of total`
+                          : "no data"}
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                {/* Data Table */}
-                <div className="overflow-hidden rounded-md border w-full">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px]">#</TableHead>
-                        <TableHead className="w-[45%]">Business & Address</TableHead>
-                        <TableHead className="w-[10%]">Rating</TableHead>
-                        <TableHead className="w-[15%]">Phone</TableHead>
-                        <TableHead className="w-[30%]">Website</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedData.length ? (
-                        paginatedData.map((item, index) => {
-                          const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
-                          return (
-                            <TableRow key={index}>
-                              <TableCell className="text-muted-foreground font-mono text-xs">
-                                {actualIndex}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <span className="font-semibold">{item.title}</span>
-                                  <div className="flex items-start gap-1.5 text-muted-foreground">
-                                    <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
-                                    <span className="text-xs">{item.address || "—"}</span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="space-y-0.5">
-                                  <StarRating rating={item.ratingScore} />
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {item.reviewCount || "0"} reviews
-                                  </p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {item.phone ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                    <span className="font-mono text-sm">{item.phone}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {item.website ? (
-                                  <a
-                                    href={
-                                      item.website.startsWith("http")
-                                        ? item.website
-                                        : `https://${item.website}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center text-xs font-medium text-primary hover:underline truncate max-w-[200px]"
-                                  >
-                                    {item.website}
-                                    <ExternalLink className="ml-1 h-3 w-3 shrink-0" />
-                                  </a>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center">
-                            No results.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Footer with Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground font-medium">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                    {Math.min(currentPage * itemsPerPage, sortedData.length)} of {sortedData.length}{" "}
-                    records
-                  </div>
+                {/* Table Section */}
+                <div className="space-y-4">
+                  {/* Toolbar */}
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <div className="text-sm font-medium px-4 py-1.5 bg-muted rounded-md border min-w-[100px] text-center">
-                      Page {currentPage} of {totalPages || 1}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages || totalPages === 0}
-                    >
-                      Next
+                    <Input
+                      placeholder="Search business names, addresses, or locations..."
+                      className="h-11 border-slate-200 pl-10 shadow-none focus:ring-primary dark:border-slate-800"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                    />
+                    <Button variant="outline" size="sm" onClick={exportCSV}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export
                     </Button>
                   </div>
+
+                  {/* Data Table */}
+                  <div className="overflow-hidden rounded-md border w-full">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">#</TableHead>
+                          <TableHead className="w-[45%]">Business & Address</TableHead>
+                          <TableHead className="w-[10%]">Rating</TableHead>
+                          <TableHead className="w-[15%]">Phone</TableHead>
+                          <TableHead className="w-[30%]">Website</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedData.length ? (
+                          paginatedData.map((item, index) => {
+                            const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
+                            return (
+                              <TableRow key={index}>
+                                <TableCell className="text-muted-foreground font-mono text-xs">
+                                  {actualIndex}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-semibold">{item.title}</span>
+                                    <div className="flex items-start gap-1.5 text-muted-foreground">
+                                      <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                                      <span className="text-xs">{item.address || "—"}</span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="space-y-0.5">
+                                    <StarRating rating={item.ratingScore} />
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {item.reviewCount || "0"} reviews
+                                    </p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {item.phone ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                      <span className="font-mono text-sm">{item.phone}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {item.website ? (
+                                    <a
+                                      href={
+                                        item.website.startsWith("http")
+                                          ? item.website
+                                          : `https://${item.website}`
+                                      }
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center text-xs font-medium text-primary hover:underline truncate max-w-[200px]"
+                                    >
+                                      {item.website}
+                                      <ExternalLink className="ml-1 h-3 w-3 shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                              No results.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Footer with Pagination */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground font-medium">
+                      Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                      {Math.min(currentPage * itemsPerPage, sortedData.length)} of{" "}
+                      {sortedData.length} records
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="text-sm font-medium px-4 py-1.5 bg-muted rounded-md border min-w-[100px] text-center">
+                        Page {currentPage} of {totalPages || 1}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages || totalPages === 0}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Empty State */
+              <div className="flex-1 flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+                <div className="rounded-full bg-muted p-4">
+                  <FolderOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">No session selected</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Select a scraping session from the sidebar to view and manage your extracted
+                    data.
+                  </p>
                 </div>
               </div>
-            </>
-          ) : (
-            /* Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-              <div className="rounded-full bg-muted p-4">
-                <FolderOpen className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">No session selected</h3>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  Select a scraping session from the sidebar to view and manage your extracted data.
-                </p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </ScrollArea>
       </SidebarInset>
     </SidebarProvider>

@@ -45,51 +45,104 @@ const jitteredDelay = async (baseMs = 2000) => {
   await sleep(baseMs + jitter)
 }
 
+// Find the detail pane's h1 element (NOT inside the feed)
+function findDetailPaneH1(): HTMLHeadingElement | null {
+  const allH1s = document.querySelectorAll('h1')
+  for (const h1 of Array.from(allH1s)) {
+    // Skip h1s that live inside the search results feed
+    if (h1.closest('[role="feed"]')) continue
+    // The detail pane h1 contains the place name (not "Hasil", "Results", etc.)
+    // It's usually the one that's NOT a section header
+    const text = h1.textContent?.trim() || ''
+    if (text.length > 0) return h1 as HTMLHeadingElement
+  }
+  return null
+}
+
+// Walk up from h1 to find rating/review data within the detail pane only
+function findRatingFromH1(h1: HTMLElement): { rating: string; reviews: string } {
+  let ancestor: HTMLElement | null = h1.parentElement
+
+  for (let depth = 0; depth < 10; depth++) {
+    if (!ancestor) break
+    // STOP: if this ancestor contains the feed, we've gone too far up
+    if (ancestor.querySelector('[role="feed"]')) break
+
+    // Search this subtree for a rating-like span (e.g. "4,8" or "4.5")
+    const spans = ancestor.querySelectorAll('span[aria-hidden="true"]')
+    for (const span of Array.from(spans)) {
+      const text = span.textContent?.trim() || ''
+      if (/^\d[.,]\d$/.test(text)) {
+        // Found rating! Now find review count nearby.
+        // Walk up a few levels from rating span to find a "(N)" pattern
+        let reviewAncestor: HTMLElement | null = span.parentElement
+        let reviews = ''
+        for (let i = 0; i < 5 && reviewAncestor; i++) {
+          const allSpans = reviewAncestor.querySelectorAll('span')
+          for (const s of Array.from(allSpans)) {
+            const t = s.textContent?.trim() || ''
+            // Match "(7.157)", "(1,234)", "(803)" etc.
+            if (/^\([\d.,\s]+\)$/.test(t)) {
+              reviews = t.replace(/[()]/g, '').trim()
+              break
+            }
+          }
+          if (reviews) break
+          reviewAncestor = reviewAncestor.parentElement
+        }
+        return { rating: text, reviews }
+      }
+    }
+
+    ancestor = ancestor.parentElement
+  }
+
+  return { rating: '', reviews: '' }
+}
+
 async function extractDetails(sessionId: string): Promise<ScrapedData> {
   // Wait a bit for the pane to fully render
   await sleep(1500)
 
-  const title = getXPathText('//h1[contains(@class, "DUwDvf")]')
-  
-  // Try to find the specific container for ratings to avoid picking up the first result in the list
-  // Google Maps often uses these classes for the detail pane rating
-  const ratingScore = getXPathText('//div[@role="main"]//span[contains(@class, "MW4etd")]') || 
-                      getXPathText('//div[contains(@class, "F7kYyc")]//span[contains(@class, "MW4etd")]')
-  
-  let reviewCount = getXPathText('//div[@role="main"]//span[contains(@class, "UY7F9")]') ||
-                    getXPathText('//div[contains(@class, "F7kYyc")]//span[contains(@class, "UY7F9")]')
-  // Strip parentheses
-  if (reviewCount) {
-    reviewCount = reviewCount.replace(/[()]/g, '').trim()
+  // Step 1: Find the detail pane h1 (place title) — no obfuscated classes
+  const h1 = findDetailPaneH1()
+  const title = h1?.textContent?.trim() || ''
+
+  // Step 2: Find rating & reviews by DOM traversal from h1
+  let ratingScore = ''
+  let reviewCount = ''
+  if (h1) {
+    const { rating, reviews } = findRatingFromH1(h1)
+    ratingScore = rating
+    reviewCount = reviews
   }
 
-  const address = getXPathText('//button[@data-item-id="address"]//div[contains(@class, "Io6YTe")]')
-  const phone = getXPathText('//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "Io6YTe")]')
-  
-  // Website extraction
-  let website = ""
+  // Step 3: Address & phone — use stable data-item-id attributes (not class-based)
+  // Strip non-printable Unicode chars (icons, BOM, zero-width spaces) that GMaps embeds
+  const sanitize = (raw: string) => raw.replace(/[^\x20-\x7E\u00A0-\u024F\u0400-\u04FF\u0600-\u06FF\u4E00-\u9FFF\u3000-\u303F\uAC00-\uD7AF]/g, '').trim()
+
+  const addressButton = document.querySelector('button[data-item-id="address"]')
+  const address = sanitize(addressButton?.querySelector('div:last-of-type')?.textContent || '')
+
+  const phoneButton = document.querySelector('button[data-item-id^="phone:tel:"]')
+  const phone = sanitize(phoneButton?.querySelector('div:last-of-type')?.textContent || '')
+
+  // Step 4: Website — use stable data-item-id attribute
+  let website = ''
   try {
-    const websiteNode = document.evaluate(
-      '//a[@data-item-id="authority"]',
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    ).singleNodeValue as HTMLAnchorElement
-    
+    const websiteNode = document.querySelector('a[data-item-id="authority"]') as HTMLAnchorElement
     if (websiteNode) {
       const href = websiteNode.getAttribute('href')
       if (href) {
-        // Resolve relative URLs using URL constructor
         website = new URL(href, window.location.origin).href
       }
     }
   } catch (e) {
-    console.error("Error extracting website:", e)
+    console.error('Error extracting website:', e)
   }
-  
-  // Try to parse coordinate from the URL if possible
-  let coordinates = ""
+
+  // Step 5: Coordinates from URL
+  let coordinates = ''
   const match = window.location.href.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
   if (match) {
     coordinates = `${match[1]},${match[2]}`
@@ -133,15 +186,10 @@ async function performScraping(limit: number, sessionId: string) {
         break
       }
 
-      const cardsResult = document.evaluate(
-        '//a[contains(@class, "hfpxzc")]',
-        document,
-        null,
-        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-        null
-      )
-
-      const snapshotLength = cardsResult.snapshotLength
+      // Find all result card links inside the feed
+      const feedEl = document.querySelector('[role="feed"]')
+      const cards = feedEl ? feedEl.querySelectorAll('a[href*="/maps/place/"]') : []
+      const snapshotLength = cards.length
       console.log(`SCRAPER: Found ${snapshotLength} cards in current view. Progress: ${results.length}/${limit}`)
       
       for (let i = 0; i < snapshotLength; i++) {
@@ -155,7 +203,7 @@ async function performScraping(limit: number, sessionId: string) {
            break
         }
 
-        const card = cardsResult.snapshotItem(i) as HTMLAnchorElement
+        const card = cards[i] as HTMLAnchorElement
         const href = card.href
         
         if (scrapedIds.has(href)) continue
@@ -175,13 +223,7 @@ async function performScraping(limit: number, sessionId: string) {
         }
 
         // Back to results logic
-        const backButton = document.evaluate(
-          '//button[contains(@class, "hYBOP") or @aria-label="Back" or @aria-label="Kembali"]',
-          document,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-          null
-        ).singleNodeValue as HTMLButtonElement
+        const backButton = document.querySelector('button[aria-label="Back"], button[aria-label="Kembali"], button[jsaction*="back"]') as HTMLButtonElement
 
         if (backButton) {
           backButton.click()

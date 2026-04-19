@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "~/components/ui/select"
+import { ScrollArea } from "~/components/ui/scroll-area"
 import { Switch } from "~/components/ui/switch"
 import { Label } from "~/components/ui/label"
 import {
@@ -428,7 +429,7 @@ function OptionsIndex() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-0 mt-6 space-y-6">
+        <ScrollArea className="flex-1 p-4 md:p-8 pt-0 mt-6 space-y-6">
           {selectedSession ? (
             <>
               {/* Stat Cards */}
@@ -625,7 +626,7 @@ function OptionsIndex() {
               </div>
             </div>
           )}
-        </div>
+        </ScrollArea>
       </SidebarInset>
     </SidebarProvider>
   )

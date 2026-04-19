@@ -1,8 +1,0 @@
-node_modules/
-build/
-.plasmo/
-*.plasmo.*
-manifest.json
-assets/
-components.json
-openspec/

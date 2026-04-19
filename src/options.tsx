@@ -20,6 +20,7 @@ import {
 } from "~/components/ui/table"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
+import { Checkbox } from "~/components/ui/checkbox"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Separator } from "~/components/ui/separator"
@@ -66,7 +67,8 @@ import {
   Users,
   BarChart3,
   FolderOpen,
-  Info
+  Info,
+  MessageCircle
 } from "lucide-react"
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
@@ -118,6 +120,28 @@ function calculateLeadScore(item: ScrapedData): number {
   return score
 }
 
+function generateRowId(item: ScrapedData): string {
+  return encodeURIComponent(`${item.title}-${item.address}-${item.coordinates}`)
+}
+
+function formatWhatsAppLink(phone: string): string {
+  // Remove all non-numeric characters
+  let cleanNumber = phone.replace(/\D/g, "")
+  // If Indonesian number starts with 0, replace with 62
+  if (cleanNumber.startsWith("0")) {
+    cleanNumber = "62" + cleanNumber.slice(1)
+  }
+  return `https://wa.me/${cleanNumber}`
+}
+
+function formatMapsLink(item: ScrapedData): string {
+  if (item.coordinates) {
+    return `https://www.google.com/maps/place/${item.coordinates}`
+  }
+  const query = encodeURIComponent(`${item.title} ${item.address}`)
+  return `https://www.google.com/maps/search/?api=1&query=${query}`
+}
+
 // --- Main Component ---
 
 function OptionsIndex() {
@@ -132,44 +156,54 @@ function OptionsIndex() {
   const [minReviews, setMinReviews] = useState<string>("")
   const [maxReviews, setMaxReviews] = useState<string>("")
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const itemsPerPage = 50
 
   // Instead of an effect, we reset pagination when filtering
   const handleSessionChange = (val: string) => {
     setSelectedSession(val)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleRatingChange = (val: string) => {
     setMinRating(parseFloat(val))
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleSortChange = (val: string) => {
     setSortBy(val)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleWebsiteFilter = (val: boolean) => {
     setHideNoWebsite(val)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handlePhoneFilter = (val: boolean) => {
     setHideNoPhone(val)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleTopTierFilter = (val: boolean) => {
     setShowTopTierOnly(val)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleMinReviewsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMinReviews(e.target.value)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
   const handleMaxReviewsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMaxReviews(e.target.value)
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
 
   const loadData = () => {
@@ -321,6 +355,55 @@ function OptionsIndex() {
   const withPhone = currentData.filter((item) => !!item.phone).length
   const highlyRated = currentData.filter((item) => (parseFloat(item.ratingScore) || 0) > 4.5).length
   const withWebsite = currentData.filter((item) => !!item.website).length
+
+  // -- Row Selection logic --
+  const isAllSelected =
+    sortedData.length > 0 && sortedData.every((item) => selectedIds.has(generateRowId(item)))
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(sortedData.map((item) => generateRowId(item)))
+      setSelectedIds(allIds)
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const exportSelectedCSV = () => {
+    if (selectedIds.size === 0) return
+    const selectedData = sortedData.filter((item) => selectedIds.has(generateRowId(item)))
+    exportToCSV(selectedData, "selected_batch")
+  }
+
+  const deleteSelected = () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} selected leads?`)) return
+
+    // Filter out the selected items from the master raw data array
+    const newData = data.filter((item) => {
+      // If it's the current session and its ID is in our selected set, remove it
+      if ((item.sessionId || "Legacy Session") === selectedSession) {
+        const id = generateRowId(item)
+        if (selectedIds.has(id)) return false
+      }
+      return true
+    })
+
+    chrome.storage.local.set({ scrapedData: newData }, () => {
+      loadData()
+      setSelectedIds(new Set())
+    })
+  }
 
   return (
     <SidebarProvider>
@@ -632,14 +715,44 @@ function OptionsIndex() {
 
                 {/* Table Section */}
                 <div className="space-y-4">
-                  {/* Toolbar */}
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Search business names, addresses, or locations..."
-                      className="h-11 border-slate-200 pl-10 shadow-none focus:ring-primary dark:border-slate-800"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
+                  {/* Toolbar / Batch Actions */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="relative w-full max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search business names, addresses, or locations..."
+                        className="h-10 pl-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm transition-all focus-visible:ring-primary"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+
+                    {selectedIds.size > 0 && (
+                      <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                        <span className="text-sm font-semibold whitespace-nowrap">
+                          {selectedIds.size} selected
+                        </span>
+                        <Separator orientation="vertical" className="h-4 bg-primary/20 mx-1" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-primary hover:bg-primary/20 hover:text-primary"
+                          onClick={exportSelectedCSV}
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                          Export
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-destructive hover:bg-destructive/20 hover:text-destructive"
+                          onClick={deleteSelected}
+                        >
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Data Table */}
@@ -647,19 +760,41 @@ function OptionsIndex() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px] pl-4">
+                            <Checkbox
+                              checked={isAllSelected}
+                              onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                              aria-label="Select all"
+                            />
+                          </TableHead>
                           <TableHead className="w-[50px]">#</TableHead>
-                          <TableHead className="w-[45%]">Business & Address</TableHead>
-                          <TableHead className="w-[10%]">Rating</TableHead>
-                          <TableHead className="w-[15%]">Phone</TableHead>
-                          <TableHead className="w-[30%]">Website</TableHead>
+                          <TableHead className="w-[300px]">Business & Address</TableHead>
+                          <TableHead className="w-[180px]">Rating</TableHead>
+                          <TableHead className="w-[180px]">Contact Info</TableHead>
+                          <TableHead className="w-[150px]">Website</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedData.length ? (
                           paginatedData.map((item, index) => {
                             const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
+                            const rowId = generateRowId(item)
+                            const isSelected = selectedIds.has(rowId)
+
                             return (
-                              <TableRow key={index}>
+                              <TableRow
+                                key={rowId}
+                                data-state={isSelected ? "selected" : undefined}
+                              >
+                                <TableCell className="pl-4">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) =>
+                                      handleSelectRow(rowId, checked as boolean)
+                                    }
+                                    aria-label={`Select ${item.title}`}
+                                  />
+                                </TableCell>
                                 <TableCell className="text-muted-foreground font-mono text-xs">
                                   {actualIndex}
                                 </TableCell>
@@ -667,7 +802,15 @@ function OptionsIndex() {
                                   <div className="flex flex-col gap-1">
                                     <span className="font-semibold">{item.title}</span>
                                     <div className="flex items-start gap-1.5 text-muted-foreground">
-                                      <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                                      <a
+                                        href={formatMapsLink(item)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-0.5 shrink-0 text-primary hover:opacity-80 transition-opacity"
+                                        title="View in Google Maps"
+                                      >
+                                        <MapPin className="h-3 w-3" />
+                                      </a>
                                       <span className="text-xs">{item.address || "—"}</span>
                                     </div>
                                   </div>
@@ -683,7 +826,15 @@ function OptionsIndex() {
                                 <TableCell>
                                   {item.phone ? (
                                     <div className="flex items-center gap-1.5">
-                                      <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                      <a
+                                        href={formatWhatsAppLink(item.phone)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="shrink-0 text-[#25D366] hover:opacity-80 transition-opacity"
+                                        title="Chat on WhatsApp"
+                                      >
+                                        <MessageCircle className="h-4 w-4" />
+                                      </a>
                                       <span className="font-mono text-sm">{item.phone}</span>
                                     </div>
                                   ) : (
@@ -714,7 +865,7 @@ function OptionsIndex() {
                           })
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
+                            <TableCell colSpan={6} className="h-24 text-center">
                               No results.
                             </TableCell>
                           </TableRow>

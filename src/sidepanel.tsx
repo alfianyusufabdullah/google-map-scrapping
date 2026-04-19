@@ -3,8 +3,14 @@ import { useState, useEffect } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
-import { Switch } from "~/components/ui/switch"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "~/components/ui/card"
 import { Search, MapPin, Database, Hash, Loader2, XCircle } from "lucide-react"
 
 function IndexSidePanel() {
@@ -17,25 +23,32 @@ function IndexSidePanel() {
 
   // Sync isScraping state with storage for persistence
   useEffect(() => {
-    chrome.storage.local.get(["isScraping", "scrapingTabId", "currentSessionCount", "currentSessionLimit"], (res) => {
-      const storedIsScraping = !!res.isScraping
-      setIsScraping(storedIsScraping)
-      setCurrentSessionCount(Number(res.currentSessionCount) || 0)
-      if (res.currentSessionLimit) {
-        setCurrentSessionLimit(Number(res.currentSessionLimit))
-      }
+    chrome.storage.local.get(
+      ["isScraping", "scrapingTabId", "currentSessionCount", "currentSessionLimit"],
+      (res) => {
+        const storedIsScraping = !!res.isScraping
+        setIsScraping(storedIsScraping)
+        setCurrentSessionCount(Number(res.currentSessionCount) || 0)
+        if (res.currentSessionLimit) {
+          setCurrentSessionLimit(Number(res.currentSessionLimit))
+        }
 
-      // If storage says we are scraping, verify if the tab is still alive
-      if (storedIsScraping && typeof res.scrapingTabId === "number") {
-        chrome.tabs.sendMessage(res.scrapingTabId as number, { action: "PING" }, (response: any) => {
-          if (chrome.runtime.lastError || !response) {
-            console.log("SIDEPANEL: Health check failed. Resetting state.")
-            setIsScraping(false)
-            chrome.storage.local.set({ isScraping: false, scrapingTabId: null })
-          }
-        })
+        // If storage says we are scraping, verify if the tab is still alive
+        if (storedIsScraping && typeof res.scrapingTabId === "number") {
+          chrome.tabs.sendMessage(
+            res.scrapingTabId as number,
+            { action: "PING" },
+            (response: { success: boolean } | undefined) => {
+              if (chrome.runtime.lastError || !response) {
+                console.log("SIDEPANEL: Health check failed. Resetting state.")
+                setIsScraping(false)
+                chrome.storage.local.set({ isScraping: false, scrapingTabId: null })
+              }
+            }
+          )
+        }
       }
-    })
+    )
 
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes.isScraping) {
@@ -79,7 +92,10 @@ function IndexSidePanel() {
         if (!response?.success) {
           setIsScraping(false)
           chrome.storage.local.set({ isScraping: false })
-          alert(response?.error || "Gagal menghubungi Google Maps. Pastikan tab Maps aktif dan sudah di-refresh.")
+          alert(
+            response?.error ||
+              "Gagal menghubungi Google Maps. Pastikan tab Maps aktif dan sudah di-refresh."
+          )
         }
       }
     )
@@ -101,11 +117,9 @@ function IndexSidePanel() {
       <Card className="border-none shadow-md">
         <CardHeader>
           <CardTitle className="text-lg">Scraper Configuration</CardTitle>
-          <CardDescription>
-            Set parameters before starting the extraction process.
-          </CardDescription>
+          <CardDescription>Set parameters before starting the extraction process.</CardDescription>
         </CardHeader>
-        
+
         {!isScraping ? (
           <>
             <CardContent className="space-y-4">
@@ -157,15 +171,11 @@ function IndexSidePanel() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
-              <Button 
-                className="w-full" 
-                size="lg" 
-                onClick={handleStartScraping}
-              >
+              <Button className="w-full" size="lg" onClick={handleStartScraping}>
                 Start Scraping
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full gap-2"
                 onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("options.html") })}
               >
@@ -195,10 +205,10 @@ function IndexSidePanel() {
               </div>
             </div>
 
-            <Button 
-              className="w-full gap-2 mt-4" 
+            <Button
+              className="w-full gap-2 mt-4"
               variant="destructive"
-              size="lg" 
+              size="lg"
               onClick={handleStopScraping}
             >
               <XCircle className="w-5 h-5" />

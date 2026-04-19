@@ -41,14 +41,6 @@ import {
   SidebarSeparator
 } from "~/components/ui/sidebar"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "~/components/ui/dropdown-menu"
-import {
   Trash2,
   Download,
   RefreshCw,
@@ -56,16 +48,10 @@ import {
   Search,
   Star,
   StarHalf,
-  ArrowUpDown,
   MapPin,
   Phone,
   Globe,
   ExternalLink,
-  MoreHorizontal,
-  Copy,
-  TrendingUp,
-  Users,
-  BarChart3,
   FolderOpen,
   Info,
   MessageCircle

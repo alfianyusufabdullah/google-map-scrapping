@@ -1,0 +1,6 @@
+node_modules
+
+.plasmo
+build/
+*.plasmo.*
+manifest.json

@@ -5,7 +5,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "~/components/ui/select"
 import { Switch } from "~/components/ui/switch"
 import { Label } from "~/components/ui/label"
@@ -15,7 +15,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRow
 } from "~/components/ui/table"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -36,7 +36,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-  SidebarSeparator,
+  SidebarSeparator
 } from "~/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -44,7 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from "~/components/ui/dropdown-menu"
 import {
   Trash2,
@@ -64,7 +64,7 @@ import {
   TrendingUp,
   Users,
   BarChart3,
-  FolderOpen,
+  FolderOpen
 } from "lucide-react"
 
 interface ScrapedData {
@@ -95,9 +95,7 @@ const StarRating = ({ rating }: { rating: string }) => {
       {[...Array(emptyStars)].map((_, i) => (
         <Star key={`empty-${i}`} className="w-3.5 h-3.5 text-muted-foreground/30" />
       ))}
-      <span className="ml-1.5 font-bold text-foreground text-sm">
-        {rating || "0"}
-      </span>
+      <span className="ml-1.5 font-bold text-foreground text-sm">{rating || "0"}</span>
     </div>
   )
 }
@@ -115,13 +113,31 @@ function OptionsIndex() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 50
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useEffect(() => {
+  // Instead of an effect, we reset pagination when filtering
+  const handleSessionChange = (val: string) => {
+    setSelectedSession(val)
     setCurrentPage(1)
-  }, [selectedSession, searchQuery, minRating, sortBy, hideNoWebsite, hideNoPhone])
+  }
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1)
+  }
+  const handleRatingChange = (val: string) => {
+    setMinRating(parseFloat(val))
+    setCurrentPage(1)
+  }
+  const handleSortChange = (val: string) => {
+    setSortBy(val)
+    setCurrentPage(1)
+  }
+  const handleWebsiteFilter = (val: boolean) => {
+    setHideNoWebsite(val)
+    setCurrentPage(1)
+  }
+  const handlePhoneFilter = (val: boolean) => {
+    setHideNoPhone(val)
+    setCurrentPage(1)
+  }
 
   const loadData = () => {
     chrome.storage.local.get(["scrapedData"], (res) => {
@@ -129,7 +145,9 @@ function OptionsIndex() {
       setData(storedData)
 
       if (storedData.length > 0) {
-        const uniqueSessions = Array.from(new Set(storedData.map(item => item.sessionId || "Legacy Session")))
+        const uniqueSessions = Array.from(
+          new Set(storedData.map((item) => item.sessionId || "Legacy Session"))
+        )
         uniqueSessions.sort((a, b) => b.localeCompare(a))
         setSelectedSession(uniqueSessions[0])
       } else {
@@ -137,6 +155,10 @@ function OptionsIndex() {
       }
     })
   }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const clearDatabase = () => {
     if (confirm("Are you sure you want to delete all data?")) {
@@ -149,8 +171,17 @@ function OptionsIndex() {
   const exportCSV = () => {
     if (data.length === 0) return
 
-    const headers = ["Session ID", "Title", "Rating Score", "Review Count", "Address", "Phone", "Website", "Coordinates"]
-    const rows = data.map(item => [
+    const headers = [
+      "Session ID",
+      "Title",
+      "Rating Score",
+      "Review Count",
+      "Address",
+      "Phone",
+      "Website",
+      "Coordinates"
+    ]
+    const rows = data.map((item) => [
       `"${item.sessionId || "Legacy Session"}"`,
       `"${item.title.replace(/"/g, '""')}"`,
       `"${item.ratingScore}"`,
@@ -161,12 +192,15 @@ function OptionsIndex() {
       `"${item.coordinates}"`
     ])
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n")
+    const csvContent = [headers, ...rows].map((e) => e.join(",")).join("\n")
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.setAttribute("href", url)
-    link.setAttribute("download", `google_maps_export_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute(
+      "download",
+      `google_maps_export_${new Date().toISOString().split("T")[0]}.csv`
+    )
     link.style.visibility = "hidden"
     document.body.appendChild(link)
     link.click()
@@ -174,19 +208,23 @@ function OptionsIndex() {
   }
 
   // --- Data processing ---
-  const groupedData = data.reduce((acc, item) => {
-    const key = item.sessionId || "Legacy Session"
-    if (!acc[key]) acc[key] = []
-    acc[key].push(item)
-    return acc
-  }, {} as Record<string, ScrapedData[]>)
+  const groupedData = data.reduce(
+    (acc, item) => {
+      const key = item.sessionId || "Legacy Session"
+      if (!acc[key]) acc[key] = []
+      acc[key].push(item)
+      return acc
+    },
+    {} as Record<string, ScrapedData[]>
+  )
 
   const sessionIds = Object.keys(groupedData).sort((a, b) => b.localeCompare(a))
   const currentData = selectedSession ? groupedData[selectedSession] || [] : []
 
-  const filteredData = currentData.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.address.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredData = currentData.filter((item) => {
+    const matchesSearch =
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.address.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesRating = parseFloat(item.ratingScore) >= minRating
     const hasWebsite = !hideNoWebsite || !!item.website
     const hasPhone = !hideNoPhone || !!item.phone
@@ -194,19 +232,28 @@ function OptionsIndex() {
   })
 
   const sortedData = [...filteredData].sort((a, b) => {
-    if (sortBy === "rating-desc") return (parseFloat(b.ratingScore) || 0) - (parseFloat(a.ratingScore) || 0)
-    if (sortBy === "rating-asc") return (parseFloat(a.ratingScore) || 0) - (parseFloat(b.ratingScore) || 0)
-    if (sortBy === "reviews-desc") return (parseInt(b.reviewCount.replace(/,/g, '')) || 0) - (parseInt(a.reviewCount.replace(/,/g, '')) || 0)
+    if (sortBy === "rating-desc")
+      return (parseFloat(b.ratingScore) || 0) - (parseFloat(a.ratingScore) || 0)
+    if (sortBy === "rating-asc")
+      return (parseFloat(a.ratingScore) || 0) - (parseFloat(b.ratingScore) || 0)
+    if (sortBy === "reviews-desc")
+      return (
+        (parseInt(b.reviewCount.replace(/,/g, "")) || 0) -
+        (parseInt(a.reviewCount.replace(/,/g, "")) || 0)
+      )
     return 0
   })
 
   const totalPages = Math.ceil(sortedData.length / itemsPerPage)
-  const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const paginatedData = sortedData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   // Stats
-  const withPhone = currentData.filter(item => !!item.phone).length
-  const highlyRated = currentData.filter(item => (parseFloat(item.ratingScore) || 0) > 4.5).length
-  const withWebsite = currentData.filter(item => !!item.website).length
+  const withPhone = currentData.filter((item) => !!item.phone).length
+  const highlyRated = currentData.filter((item) => (parseFloat(item.ratingScore) || 0) > 4.5).length
+  const withWebsite = currentData.filter((item) => !!item.website).length
 
   return (
     <SidebarProvider>
@@ -231,12 +278,12 @@ function OptionsIndex() {
             <SidebarGroupLabel>Session</SidebarGroupLabel>
             <SidebarGroupContent>
               <div className="px-2">
-                <Select value={selectedSession} onValueChange={setSelectedSession}>
+                <Select value={selectedSession} onValueChange={handleSessionChange}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select session" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sessionIds.map(id => (
+                    {sessionIds.map((id) => (
                       <SelectItem key={id} value={id}>
                         {id.length > 28 ? id.substring(0, 28) + "..." : id}
                       </SelectItem>
@@ -253,7 +300,7 @@ function OptionsIndex() {
             <SidebarGroupContent className="px-2 space-y-4 pt-2">
               <div className="space-y-2">
                 <Label className="text-xs">Sort By</Label>
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={sortBy} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Default" />
                   </SelectTrigger>
@@ -268,7 +315,7 @@ function OptionsIndex() {
 
               <div className="space-y-2">
                 <Label className="text-xs">Min Rating</Label>
-                <Select value={minRating.toString()} onValueChange={(val) => setMinRating(parseFloat(val))}>
+                <Select value={minRating.toString()} onValueChange={handleRatingChange}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
@@ -283,19 +330,23 @@ function OptionsIndex() {
 
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="hide-no-website" className="text-xs cursor-pointer">Hide No Website</Label>
+                  <Label htmlFor="hide-no-website" className="text-xs cursor-pointer">
+                    Hide No Website
+                  </Label>
                   <Switch
                     id="hide-no-website"
                     checked={hideNoWebsite}
-                    onCheckedChange={setHideNoWebsite}
+                    onCheckedChange={handleWebsiteFilter}
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="hide-no-phone" className="text-xs cursor-pointer">Hide No Phone</Label>
+                  <Label htmlFor="hide-no-phone" className="text-xs cursor-pointer">
+                    Hide No Phone
+                  </Label>
                   <Switch
                     id="hide-no-phone"
                     checked={hideNoPhone}
-                    onCheckedChange={setHideNoPhone}
+                    onCheckedChange={handlePhoneFilter}
                   />
                 </div>
               </div>
@@ -323,7 +374,9 @@ function OptionsIndex() {
               <SidebarMenuButton
                 onClick={() => {
                   if (confirm(`Delete session "${selectedSession}"?`)) {
-                    const newData = data.filter(d => (d.sessionId || "Legacy Session") !== selectedSession)
+                    const newData = data.filter(
+                      (d) => (d.sessionId || "Legacy Session") !== selectedSession
+                    )
                     chrome.storage.local.set({ scrapedData: newData }, loadData)
                   }
                 }}
@@ -356,9 +409,7 @@ function OptionsIndex() {
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex flex-1 items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">
-                {selectedSession || "Overview"}
-              </h2>
+              <h2 className="text-lg font-semibold">{selectedSession || "Overview"}</h2>
               <p className="text-sm text-muted-foreground">
                 {selectedSession
                   ? `${currentData.length} records in this session`
@@ -437,10 +488,10 @@ function OptionsIndex() {
                 {/* Toolbar */}
                 <div className="flex items-center gap-2">
                   <Input
-                    placeholder="Filter places..."
-                    className="max-w-sm"
+                    placeholder="Search business names, addresses, or locations..."
+                    className="h-11 border-slate-200 pl-10 shadow-none focus:ring-primary dark:border-slate-800"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={handleSearchChange}
                   />
                   <Button variant="outline" size="sm" onClick={exportCSV}>
                     <Download className="mr-2 h-4 w-4" />
@@ -474,9 +525,7 @@ function OptionsIndex() {
                                   <span className="font-semibold">{item.title}</span>
                                   <div className="flex items-start gap-1.5 text-muted-foreground">
                                     <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
-                                    <span className="text-xs">
-                                      {item.address || "—"}
-                                    </span>
+                                    <span className="text-xs">{item.address || "—"}</span>
                                   </div>
                                 </div>
                               </TableCell>
@@ -501,7 +550,11 @@ function OptionsIndex() {
                               <TableCell>
                                 {item.website ? (
                                   <a
-                                    href={item.website.startsWith('http') ? item.website : `https://${item.website}`}
+                                    href={
+                                      item.website.startsWith("http")
+                                        ? item.website
+                                        : `https://${item.website}`
+                                    }
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center text-xs font-medium text-primary hover:underline truncate max-w-[200px]"
@@ -530,13 +583,15 @@ function OptionsIndex() {
                 {/* Footer with Pagination */}
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground font-medium">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, sortedData.length)} of {sortedData.length} records
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                    {Math.min(currentPage * itemsPerPage, sortedData.length)} of {sortedData.length}{" "}
+                    records
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                     >
                       Previous
@@ -544,10 +599,10 @@ function OptionsIndex() {
                     <div className="text-sm font-medium px-4 py-1.5 bg-muted rounded-md border min-w-[100px] text-center">
                       Page {currentPage} of {totalPages || 1}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages || totalPages === 0}
                     >
                       Next

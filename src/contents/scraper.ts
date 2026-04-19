@@ -50,9 +50,14 @@ async function extractDetails(sessionId: string): Promise<ScrapedData> {
   await sleep(1500)
 
   const title = getXPathText('//h1[contains(@class, "DUwDvf")]')
-  const ratingScore = getXPathText('//span[contains(@class, "MW4etd")]')
   
-  let reviewCount = getXPathText('//span[contains(@class, "UY7F9")]')
+  // Try to find the specific container for ratings to avoid picking up the first result in the list
+  // Google Maps often uses these classes for the detail pane rating
+  const ratingScore = getXPathText('//div[@role="main"]//span[contains(@class, "MW4etd")]') || 
+                      getXPathText('//div[contains(@class, "F7kYyc")]//span[contains(@class, "MW4etd")]')
+  
+  let reviewCount = getXPathText('//div[@role="main"]//span[contains(@class, "UY7F9")]') ||
+                    getXPathText('//div[contains(@class, "F7kYyc")]//span[contains(@class, "UY7F9")]')
   // Strip parentheses
   if (reviewCount) {
     reviewCount = reviewCount.replace(/[()]/g, '').trim()
@@ -121,6 +126,13 @@ async function performScraping(limit: number, sessionId: string) {
   
   try {
     while (isScrolling && results.length < limit) {
+      // Check if user requested a stop via storage
+      const storageRes = await chrome.storage.local.get(["isScraping"])
+      if (storageRes.isScraping === false) {
+        console.log("SCRAPER: Stop signal received. Halting extraction loop.")
+        break
+      }
+
       const cardsResult = document.evaluate(
         '//a[contains(@class, "hfpxzc")]',
         document,
@@ -134,6 +146,14 @@ async function performScraping(limit: number, sessionId: string) {
       
       for (let i = 0; i < snapshotLength; i++) {
         if (results.length >= limit) break
+
+        // Re-check before deep extraction logic
+        const interimCheck = await chrome.storage.local.get(["isScraping"])
+        if (interimCheck.isScraping === false) {
+           console.log("SCRAPER: Stop signal received during card iteration. Halting.")
+           isScrolling = false // force outer loop break too
+           break
+        }
 
         const card = cardsResult.snapshotItem(i) as HTMLAnchorElement
         const href = card.href
@@ -189,13 +209,22 @@ async function performScraping(limit: number, sessionId: string) {
     
     chrome.storage.local.get(["scrapedData"], (res) => {
       const existing = (res.scrapedData as ScrapedData[]) || []
-      chrome.storage.local.set({ 
-        scrapedData: [...existing, ...results],
-        isScraping: false 
+      // We only alert if it wasn't cancelled abruptly
+      chrome.storage.local.get(["isScraping"], (finalCheck) => {
+         const wasCancelled = finalCheck.isScraping === false;
+         
+         chrome.storage.local.set({ 
+           scrapedData: [...existing, ...results],
+           isScraping: false 
+         })
+
+         if (wasCancelled) {
+             alert(`Scraping Dihentikan! Berhasil menyimpan ${results.length} data.`)
+         } else {
+             alert(`Scraping Selesai! Berhasil mengambil ${results.length} data.`)
+         }
       })
     })
-
-    alert(`Scraping Selesai! Berhasil mengambil ${results.length} data.`)
   }
 }
 

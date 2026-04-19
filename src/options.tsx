@@ -65,8 +65,11 @@ import {
   TrendingUp,
   Users,
   BarChart3,
-  FolderOpen
+  FolderOpen,
+  Info
 } from "lucide-react"
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 
 interface ScrapedData {
   sessionId: string
@@ -101,6 +104,20 @@ const StarRating = ({ rating }: { rating: string }) => {
   )
 }
 
+function calculateLeadScore(item: ScrapedData): number {
+  let score = 0
+  if (item.website) score += 30
+  if (item.phone) score += 30
+
+  const rating = parseFloat(item.ratingScore) || 0
+  if (rating >= 4.0) score += 20
+
+  const reviews = parseInt(item.reviewCount.replace(/,/g, "")) || 0
+  if (reviews >= 10 && reviews <= 1000) score += 20
+
+  return score
+}
+
 // --- Main Component ---
 
 function OptionsIndex() {
@@ -111,6 +128,9 @@ function OptionsIndex() {
   const [sortBy, setSortBy] = useState<string>("default")
   const [hideNoWebsite, setHideNoWebsite] = useState(false)
   const [hideNoPhone, setHideNoPhone] = useState(false)
+  const [showTopTierOnly, setShowTopTierOnly] = useState(false)
+  const [minReviews, setMinReviews] = useState<string>("")
+  const [maxReviews, setMaxReviews] = useState<string>("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 50
 
@@ -137,6 +157,18 @@ function OptionsIndex() {
   }
   const handlePhoneFilter = (val: boolean) => {
     setHideNoPhone(val)
+    setCurrentPage(1)
+  }
+  const handleTopTierFilter = (val: boolean) => {
+    setShowTopTierOnly(val)
+    setCurrentPage(1)
+  }
+  const handleMinReviewsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMinReviews(e.target.value)
+    setCurrentPage(1)
+  }
+  const handleMaxReviewsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMaxReviews(e.target.value)
     setCurrentPage(1)
   }
 
@@ -169,8 +201,8 @@ function OptionsIndex() {
     }
   }
 
-  const exportCSV = () => {
-    if (data.length === 0) return
+  const exportToCSV = (dataArray: ScrapedData[], filenamePrefix: string) => {
+    if (dataArray.length === 0) return
 
     const headers = [
       "Session ID",
@@ -182,7 +214,7 @@ function OptionsIndex() {
       "Website",
       "Coordinates"
     ]
-    const rows = data.map((item) => [
+    const rows = dataArray.map((item) => [
       `"${item.sessionId || "Legacy Session"}"`,
       `"${item.title.replace(/"/g, '""')}"`,
       `"${item.ratingScore}"`,
@@ -200,7 +232,7 @@ function OptionsIndex() {
     link.setAttribute("href", url)
     link.setAttribute(
       "download",
-      `google_maps_export_${new Date().toISOString().split("T")[0]}.csv`
+      `google_maps_${filenamePrefix}_${new Date().toISOString().split("T")[0]}.csv`
     )
     link.style.visibility = "hidden"
     document.body.appendChild(link)
@@ -223,13 +255,47 @@ function OptionsIndex() {
   const currentData = selectedSession ? groupedData[selectedSession] || [] : []
 
   const filteredData = currentData.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.address.toLowerCase().includes(searchQuery.toLowerCase())
+    // 1. Advanced Search Engine
+    const queryParts = searchQuery.toLowerCase().split(" ").filter(Boolean)
+    let matchesSearch = true
+
+    for (const part of queryParts) {
+      if (part.startsWith("-") && part.length > 1) {
+        // Negative keyword
+        const exclusionTerm = part.slice(1)
+        if (
+          item.title.toLowerCase().includes(exclusionTerm) ||
+          item.address.toLowerCase().includes(exclusionTerm)
+        ) {
+          matchesSearch = false
+          break
+        }
+      } else {
+        // Positive keyword (AND logic)
+        if (
+          !item.title.toLowerCase().includes(part) &&
+          !item.address.toLowerCase().includes(part)
+        ) {
+          matchesSearch = false
+          break
+        }
+      }
+    }
+
     const matchesRating = parseFloat(item.ratingScore) >= minRating
     const hasWebsite = !hideNoWebsite || !!item.website
     const hasPhone = !hideNoPhone || !!item.phone
-    return matchesSearch && matchesRating && hasWebsite && hasPhone
+
+    // 2. Lead Quality Scoring
+    const isTopTier = !showTopTierOnly || calculateLeadScore(item) >= 80
+
+    // 3. Review Range Filtering
+    const revCount = parseInt(item.reviewCount.replace(/,/g, "")) || 0
+    const parsedMinRev = minReviews ? parseInt(minReviews) : 0
+    const parsedMaxRev = maxReviews ? parseInt(maxReviews) : Infinity
+    const matchesReviews = revCount >= parsedMinRev && revCount <= parsedMaxRev
+
+    return matchesSearch && matchesRating && hasWebsite && hasPhone && isTopTier && matchesReviews
   })
 
   const sortedData = [...filteredData].sort((a, b) => {
@@ -331,6 +397,48 @@ function OptionsIndex() {
 
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Label
+                      htmlFor="top-tier-leads"
+                      className="text-xs cursor-pointer font-bold text-primary"
+                    >
+                      Top Tier Leads (&gt;80 Score)
+                    </Label>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="w-64 p-3 bg-white dark:bg-slate-900 border shadow-lg text-sm text-slate-700 dark:text-slate-300">
+                          <p className="font-bold mb-1 text-primary">Lead Score Calculation:</p>
+                          <ul className="space-y-1 list-disc pl-4 text-xs">
+                            <li>
+                              <strong>+30 pts</strong>: Has Website
+                            </li>
+                            <li>
+                              <strong>+30 pts</strong>: Has Phone Number
+                            </li>
+                            <li>
+                              <strong>+20 pts</strong>: Rating is 4.0 or higher
+                            </li>
+                            <li>
+                              <strong>+20 pts</strong>: Between 10 and 1,000 reviews
+                            </li>
+                          </ul>
+                          <p className="mt-2 text-xs opacity-80">
+                            A perfect score of 100 indicates a highly active, verifiable business.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Switch
+                    id="top-tier-leads"
+                    checked={showTopTierOnly}
+                    onCheckedChange={handleTopTierFilter}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
                   <Label htmlFor="hide-no-website" className="text-xs cursor-pointer">
                     Hide No Website
                   </Label>
@@ -351,6 +459,31 @@ function OptionsIndex() {
                   />
                 </div>
               </div>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs font-bold uppercase text-muted-foreground/70">
+                  Reviews Range
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="h-8 text-xs"
+                    value={minReviews}
+                    onChange={handleMinReviewsChange}
+                    min={0}
+                  />
+                  <span className="text-xs text-muted-foreground">-</span>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="h-8 text-xs"
+                    value={maxReviews}
+                    onChange={handleMaxReviewsChange}
+                    min={0}
+                  />
+                </div>
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
@@ -365,9 +498,21 @@ function OptionsIndex() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={exportCSV} disabled={data.length === 0}>
+              <SidebarMenuButton
+                onClick={() => exportToCSV(sortedData, "filtered_session")}
+                disabled={sortedData.length === 0}
+              >
                 <Download />
-                <span>Export CSV</span>
+                <span>Export Session</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => exportToCSV(data, "all_data")}
+                disabled={data.length === 0}
+              >
+                <Download />
+                <span>Export All (Raw)</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarSeparator className="my-2" />
@@ -495,10 +640,6 @@ function OptionsIndex() {
                       value={searchQuery}
                       onChange={handleSearchChange}
                     />
-                    <Button variant="outline" size="sm" onClick={exportCSV}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Export
-                    </Button>
                   </div>
 
                   {/* Data Table */}

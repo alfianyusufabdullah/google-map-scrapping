@@ -8,9 +8,10 @@ export const config: PlasmoCSConfig = {
 }
 
 export interface ScrapedData {
+  sessionId: string
   title: string
-  rating: string
-  reviews: string
+  ratingScore: string
+  reviewCount: string
   address: string
   phone: string
   website: string
@@ -44,16 +45,43 @@ const jitteredDelay = async (baseMs = 2000) => {
   await sleep(baseMs + jitter)
 }
 
-async function extractDetails(): Promise<ScrapedData> {
+async function extractDetails(sessionId: string): Promise<ScrapedData> {
   // Wait a bit for the pane to fully render
   await sleep(1500)
 
   const title = getXPathText('//h1[contains(@class, "DUwDvf")]')
-  const rating = getXPathText('//div[contains(@class, "F7kYyc")]//span[@aria-hidden="true"]')
-  const reviews = getXPathText('//span[contains(@aria-label, "ulasan") or contains(@aria-label, "reviews")]')
+  const ratingScore = getXPathText('//span[contains(@class, "MW4etd")]')
+  
+  let reviewCount = getXPathText('//span[contains(@class, "UY7F9")]')
+  // Strip parentheses
+  if (reviewCount) {
+    reviewCount = reviewCount.replace(/[()]/g, '').trim()
+  }
+
   const address = getXPathText('//button[@data-item-id="address"]//div[contains(@class, "Io6YTe")]')
   const phone = getXPathText('//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "Io6YTe")]')
-  const website = getXPathText('//a[@data-item-id="authority"]//div[contains(@class, "Io6YTe")]')
+  
+  // Website extraction
+  let website = ""
+  try {
+    const websiteNode = document.evaluate(
+      '//a[@data-item-id="authority"]',
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    ).singleNodeValue as HTMLAnchorElement
+    
+    if (websiteNode) {
+      const href = websiteNode.getAttribute('href')
+      if (href) {
+        // Resolve relative URLs using URL constructor
+        website = new URL(href, window.location.origin).href
+      }
+    }
+  } catch (e) {
+    console.error("Error extracting website:", e)
+  }
   
   // Try to parse coordinate from the URL if possible
   let coordinates = ""
@@ -62,12 +90,12 @@ async function extractDetails(): Promise<ScrapedData> {
     coordinates = `${match[1]},${match[2]}`
   }
 
-  return { title, rating, reviews, address, phone, website, coordinates } as ScrapedData
+  return { sessionId, title, ratingScore, reviewCount, address, phone, website, coordinates } as ScrapedData
 }
 
-async function performScraping(limit: number) {
-  console.log(`SCRAPER: Starting extraction loop with limit: ${limit}`)
-  chrome.storage.local.set({ isScraping: true })
+async function performScraping(limit: number, sessionId: string) {
+  console.log(`SCRAPER: Starting extraction loop with limit: ${limit}, session: ${sessionId}`)
+  chrome.storage.local.set({ isScraping: true, currentSessionCount: 0, currentSessionLimit: limit })
   
   const results: ScrapedData[] = []
   const scrapedIds = new Set<string>()
@@ -119,10 +147,11 @@ async function performScraping(limit: number) {
         console.log(`SCRAPER: Clicking card ${results.length + 1}...`)
         card.click()
         
-        const details = await extractDetails()
+        const details = await extractDetails(sessionId)
         if (details.title) {
           results.push(details)
           console.log("SCRAPER: Extracted ->", details.title)
+          chrome.storage.local.set({ currentSessionCount: results.length })
         }
 
         // Back to results logic
@@ -218,7 +247,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         searchButton.click()
 
         setTimeout(() => {
-          performScraping(limit || 500)
+          const sessionId = `Session: ${context} ${location} (${new Date().toLocaleString()})`
+          performScraping(limit || 500, sessionId)
         }, 7000)
       }, 500)
       

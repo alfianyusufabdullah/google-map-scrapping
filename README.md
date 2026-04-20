@@ -38,6 +38,20 @@ This extension is built on top of the **Plasmo Framework**, utilizing a modern w
 
 ---
 
+## 📦 Quick Installation (Pre-built)
+
+If you don't want to build the extension from source, you can use the pre-built version:
+
+1.  **Download the Extension**: Go to the **Releases** section of this repository and download the latest `google-maps-scraper-vX.X.X.zip`.
+2.  **Extract the Files**: Unzip the downloaded file into a dedicated folder on your computer.
+3.  **Load into Chrome**:
+    *   Open Google Chrome and navigate to `chrome://extensions/`.
+    *   Enable **Developer mode** (toggle switch in the top right corner).
+    *   Click **Load unpacked** in the top left corner.
+    *   Select the folder where you extracted the ZIP file.
+
+---
+
 ## 🚀 Getting Started (Development)
 
 ### Prerequisites

@@ -4,3 +4,5 @@ node_modules
 build/
 *.plasmo.*
 manifest.json
+
+static

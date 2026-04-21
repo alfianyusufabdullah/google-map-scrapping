@@ -1,37 +1,8 @@
 import type { PlasmoCSConfig } from "plasmo"
+import type { ScrapedData } from "~/lib/utils/scraper-utils"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://*.google.com/maps/*", "https://*.google.co.id/maps/*"]
-}
-
-export interface ScrapedData {
-  sessionId: string
-  title: string
-  ratingScore: string
-  reviewCount: string
-  address: string
-  phone: string
-  website: string
-  coordinates: string
-}
-
-// Helper to evaluate XPath and get text content
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _getXPathText(xpath: string, contextNode: Node = document): string {
-  try {
-    const result = document.evaluate(
-      xpath,
-      contextNode,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    )
-    const node = result.singleNodeValue
-    return node ? node.textContent?.trim() || "" : ""
-  } catch (e) {
-    console.error("XPath evaluation error:", e)
-    return ""
-  }
 }
 
 // Pause utility
@@ -277,11 +248,10 @@ async function performScraping(limit: number, sessionId: string) {
           isScraping: false
         })
 
-        if (wasCancelled) {
-          alert(`Scraping Dihentikan! Berhasil menyimpan ${results.length} data.`)
-        } else {
-          alert(`Scraping Selesai! Berhasil mengambil ${results.length} data.`)
-        }
+        chrome.runtime.sendMessage({
+          action: "SCRAPING_COMPLETE",
+          payload: { count: results.length, wasCancelled }
+        })
       })
     })
   }

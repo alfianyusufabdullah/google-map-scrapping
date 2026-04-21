@@ -12,6 +12,8 @@ import {
   CardTitle
 } from "~/components/ui/card"
 import { Search, MapPin, Database, Hash, Loader2, XCircle } from "lucide-react"
+import { toast } from "sonner"
+import { Toaster } from "~/components/ui/sonner"
 
 function IndexSidePanel() {
   const [context, setContext] = useState("")
@@ -63,17 +65,41 @@ function IndexSidePanel() {
     }
 
     chrome.storage.onChanged.addListener(handleStorageChange)
-    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+
+    const handleMessage = (message: {
+      action: string
+      payload?: { count: number; wasCancelled: boolean }
+    }) => {
+      if (message.action === "SCRAPING_COMPLETE" && message.payload) {
+        const { count, wasCancelled } = message.payload
+        if (wasCancelled) {
+          toast.warning(`Scraping Dihentikan! Berhasil menyimpan ${count} data.`, {
+            duration: 5000
+          })
+        } else {
+          toast.success(`Scraping Selesai! Berhasil mengambil ${count} data.`, {
+            duration: 5000
+          })
+        }
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleMessage)
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+      chrome.runtime.onMessage.removeListener(handleMessage)
+    }
   }, [])
 
   const handleStartScraping = () => {
     if (!context.trim() || !location.trim()) {
-      alert("Harap isi Context dan Location!")
+      toast.error("Harap isi Context dan Location!")
       return
     }
 
     if (limit <= 0 || limit > 5000) {
-      alert("Limit harus antara 1 sampai 5000!")
+      toast.error("Limit harus antara 1 sampai 5000!")
       return
     }
 
@@ -92,7 +118,7 @@ function IndexSidePanel() {
         if (!response?.success) {
           setIsScraping(false)
           chrome.storage.local.set({ isScraping: false })
-          alert(
+          toast.error(
             response?.error ||
               "Gagal menghubungi Google Maps. Pastikan tab Maps aktif dan sudah di-refresh."
           )
@@ -217,6 +243,7 @@ function IndexSidePanel() {
           </CardContent>
         )}
       </Card>
+      <Toaster position="top-center" richColors />
     </div>
   )
 }

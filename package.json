@@ -1,7 +1,7 @@
 {
   "name": "google-maps-scrapping",
   "displayName": "Google Maps Scraper",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Chrome Extension for Scraping Google Maps Data",
   "scripts": {

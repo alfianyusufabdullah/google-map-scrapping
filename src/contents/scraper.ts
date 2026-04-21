@@ -141,6 +141,10 @@ async function performScraping(limit: number, sessionId: string) {
 
   const results: ScrapedData[] = []
   const scrapedIds = new Set<string>()
+  const contentKeys = new Set<string>()
+
+  const normalizeKey = (title: string, address: string) =>
+    `${title.toLowerCase().trim()}|${address.toLowerCase().trim()}`
 
   // Wait for feed to exist
   let feedElement = document.querySelector('div[role="feed"]')
@@ -203,6 +207,21 @@ async function performScraping(limit: number, sessionId: string) {
 
         const details = await extractDetails(sessionId)
         if (details.title) {
+          const key = normalizeKey(details.title, details.address)
+          if (contentKeys.has(key)) {
+            console.log(`SCRAPER: Duplicate detected, skipping: "${details.title}"`)
+            // Still need to click back if we clicked in
+            const backButton = document.querySelector(
+              'button[aria-label="Back"], button[aria-label="Kembali"], button[jsaction*="back"]'
+            ) as HTMLButtonElement
+            if (backButton) {
+              backButton.click()
+              await sleep(1000)
+            }
+            continue
+          }
+
+          contentKeys.add(key)
           results.push(details)
           console.log("SCRAPER: Extracted ->", details.title)
           chrome.storage.local.set({ currentSessionCount: results.length })

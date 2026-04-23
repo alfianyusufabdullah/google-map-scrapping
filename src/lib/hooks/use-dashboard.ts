@@ -342,8 +342,10 @@ export function useDashboard() {
       return item
     })
 
-    chrome.storage.local.set({ scrapedData: newData }, () => {
+    const newPinned = pinnedSessions.map((s) => (s === oldName ? newName : s))
+    chrome.storage.local.set({ scrapedData: newData, pinnedSessions: newPinned }, () => {
       setData(newData)
+      setPinnedSessions(newPinned)
       setSelectedSession(newName)
       toast.success(`Session renamed to "${newName}"`)
     })

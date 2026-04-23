@@ -104,9 +104,14 @@ function IndexSidePanel() {
     }
 
     setCurrentSessionCount(0)
+    setCurrentSessionLimit(limit)
     // Set loading state immediately in UI
     setIsScraping(true)
-    chrome.storage.local.set({ isScraping: true, currentSessionCount: 0 })
+    chrome.storage.local.set({
+      isScraping: true,
+      currentSessionCount: 0,
+      currentSessionLimit: limit
+    })
 
     chrome.runtime.sendMessage(
       {

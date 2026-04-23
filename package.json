@@ -9,6 +9,7 @@
     "build": "plasmo build",
     "test": "vitest run",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.{ts,tsx,css}'",
     "prepare": "husky"
   },
